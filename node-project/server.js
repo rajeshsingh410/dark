@@ -1,78 +1,154 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+ const multer = require("multer");
+const path = require("path");
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
-// ✅ MongoDB Connection
-// Apna MongoDB URI yahan replace karein
-const MONGO_URI = 'mongodb://localhost:27017/valex_db';
-// Ya MongoDB Atlas use karo:
-// const MONGO_URI = 'mongodb+srv://<username>:<password>@cluster0.xxxxx.mongodb.net/valex_db';
-
-mongoose.connect(MONGO_URI)
-  .then(() => console.log('✅ MongoDB Connected'))
-  .catch(err => console.error('❌ MongoDB Error:', err));
-
-// ✅ Profile Schema
-const profileSchema = new mongoose.Schema({
-  username:    { type: String, required: true },
-  firstName:   { type: String },
-  lastName:    { type: String },
-  nickName:    { type: String },
-  designation: { type: String },
-  email:       { type: String, required: true, unique: true },
-  website:     { type: String },
-  phone:       { type: String },
-  address:     { type: String },
-  language:    { type: String },
-  social: {
-    twitter:  { type: String },
-    facebook: { type: String },
-    google:   { type: String },
-    linkedin: { type: String },
-    github:   { type: String },
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/");
   },
-  bio:         { type: String },
-  updatedAt:   { type: Date, default: Date.now }
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname));
+  },
 });
 
-const Profile = mongoose.model('Profile', profileSchema);
 
-// ✅ Routes
+const upload = multer({ storage });
 
-// Profile Save / Update
-app.post('/api/profile/save', async (req, res) => {
+app.use("/uploads", express.static("uploads"));
+
+mongoose
+  .connect("mongodb://127.0.0.1:27017/valex_db")
+  .then(() => console.log("✅ MongoDB Connected"))
+  .catch((err) => console.log(err));
+
+
+
+const profileSchema = new mongoose.Schema({
+  username: String,
+  firstName: String,
+  lastName: String,
+  nickName: String,
+  designation: String,
+  email: {
+    type: String,
+    unique: true,
+  },
+    profileImage: String,
+  website: String,
+  phone: String,
+  address: String,
+  language: String,
+  bio: String,
+
+  social: {
+    twitter: String,
+    facebook: String,
+    google: String,
+    linkedin: String,
+    github: String,
+  },
+
+  updatedAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
+const Profile = mongoose.model("Profile", profileSchema);
+app.post(
+  "/api/profile/save",
+  upload.single("profileImage"),
+  async (req, res) => {
+    try {
+      const data = req.body;
+
+      data.email = data.email.toLowerCase();
+
+      if (req.file) {
+        data.profileImage = `/uploads/${req.file.filename}`;
+      }
+
+      const profile = await Profile.findOneAndUpdate(
+        { email: data.email },
+        {
+          username: data.username,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          nickName: data.nickName,
+          designation: data.designation,
+          email: data.email,
+          website: data.website,
+          phone: data.phone,
+          address: data.address,
+          language: data.language,
+          bio: data.bio,
+          profileImage: data.profileImage,
+
+          social: {
+            twitter: data.twitter,
+            facebook: data.facebook,
+            google: data.google,
+            linkedin: data.linkedin,
+            github: data.github,
+          },
+        },
+        {
+          upsert: true,
+          new: true,
+        }
+      );
+
+      res.json({
+        success: true,
+        message: "Profile Saved Successfully",
+        profile,
+      });
+    } catch (err) {
+      console.log(err);
+
+      res.status(500).json({
+        success: false,
+        message: err.message,
+      });
+    }
+  }
+);
+
+app.get("/api/profile/:email", async (req, res) => {
   try {
-    const data = req.body;
+    const email = req.params.email.toLowerCase();
 
-    // Email ke basis par update karo, nahi hai toh naya banao
-    const profile = await Profile.findOneAndUpdate(
-      { email: data.email },
-      { ...data, updatedAt: new Date() },
-      { upsert: true, new: true }
-    );
+    const profile = await Profile.findOne({
+      email,
+    });
 
-    res.json({ success: true, message: 'Profile saved!', profile });
+    if (!profile) {
+      return res.json({
+        success: false,
+        message: "Profile Not Found",
+      });
+    }
+
+    res.json({
+      success: true,
+      profile,
+    });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ success: false, message: 'Server error', error: err.message });
+    console.log(err);
+
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 });
 
-// Profile Get (email se)
-app.get('/api/profile/:email', async (req, res) => {
-  try {
-    const profile = await Profile.findOne({ email: req.params.email });
-    if (!profile) return res.status(404).json({ success: false, message: 'Profile not found' });
-    res.json({ success: true, profile });
-  } catch (err) {
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
+app.listen(3000, () => {
+  console.log("🚀 Server Running On Port 3000");
 });
-
-// Server Start
-const PORT = 3000;
-app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
