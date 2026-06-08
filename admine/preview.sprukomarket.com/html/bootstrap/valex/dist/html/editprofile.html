@@ -1775,7 +1775,7 @@
                         <label class="form-label">Profile Image</label>
                        </div>
                         <div class="col-md-9">
-                          <input type="file" class="form-control" id="profileImage" accept="image/*">
+                          <input type="file" class="form-control" id="profileImage" accept="image">
                           <img
                           id="previewImage"src="" style="max-width:150px;margin-top:10px;display:none;" > 
                           </div>
@@ -1805,166 +1805,152 @@
       </div>
     </footer> <!-- Footer End -->
 
+<script>
+    const BASE_URL = "http://localhost:3000";
 
- <script>
+    // --- FUNCTION 1: DATABASE SE DATA GET KARNA AUR SHOW KARNA ---
+    async function loadProfile() {
+        const emailInput = document.getElementById("email");
+        if (!emailInput || !emailInput.value) return;
 
-async function loadProfile() {
+        const email = emailInput.value.trim().toLowerCase();
 
-    const email = document.getElementById("email").value;
+        try {
+            // Safe URL String Concatenation (+)
+            const response = await fetch(BASE_URL + "/api/profile/" + encodeURIComponent(email));
+            const result = await response.json();
 
-    if (!email) return;
+            if (!result.success) {
+                console.log("Profile not found for this email yet.");
+                return;
+            }
 
-    try {
+            const p = result.profile;
 
-        const response = await fetch(
-            `http://localhost:3000/api/profile/${email}`
-        );
+            // Right side wale Form Inputs fill karna
+            if(document.getElementById("username")) document.getElementById("username").value = p.username || "";
+            if(document.getElementById("firstName")) document.getElementById("firstName").value = p.firstName || "";
+            if(document.getElementById("lastName")) document.getElementById("lastName").value = p.lastName || "";
+            if(document.getElementById("nickName")) document.getElementById("nickName").value = p.nickName || "";
+            if(document.getElementById("designation")) document.getElementById("designation").value = p.designation || "";
+            if(document.getElementById("website")) document.getElementById("website").value = p.website || "";
+            if(document.getElementById("phone")) document.getElementById("phone").value = p.phone || "";
+            if(document.getElementById("address")) document.getElementById("address").value = p.address || "";
+            if(document.getElementById("language")) document.getElementById("language").value = p.language || "Us English";
+            if(document.getElementById("bio")) document.getElementById("bio").value = p.bio || "";
 
-        const result = await response.json();
+            // Social Info Form Inputs fill karna
+            if(document.getElementById("twitter")) document.getElementById("twitter").value = p.social?.twitter || "";
+            if(document.getElementById("facebook")) document.getElementById("facebook").value = p.social?.facebook || "";
+            if(document.getElementById("google")) document.getElementById("google").value = p.social?.google || "";
+            if(document.getElementById("linkedin")) document.getElementById("linkedin").value = p.social?.linkedin || "";
+            if(document.getElementById("github")) document.getElementById("github").value = p.social?.github || "";
 
-        if (!result.success) return;
+            // Left side Card (UI Overview) Elements fill karna
+            if(document.getElementById("profileName")) {
+                document.getElementById("profileName").innerText = ((p.firstName || "") + " " + (p.lastName || "")).trim() || "No Name";
+            }
+            if(document.getElementById("profileDesignation")) {
+                document.getElementById("profileDesignation").innerText = p.designation || "web designer";
+            }
+            if(document.getElementById("profileBio")) {
+                document.getElementById("profileBio").innerText = p.bio || "No Bio Available";
+            }
 
-        const p = result.profile;
+            // Image Preview dynamic load from backend uploads
+            if (p.profileImage) {
+                document.getElementById("profilePreview").src = BASE_URL + p.profileImage;
+            }
 
-        document.getElementById("username").value = p.username || "";
-        document.getElementById("firstName").value = p.firstName || "";
-        document.getElementById("lastName").value = p.lastName || "";
-        document.getElementById("nickName").value = p.nickName || "";
-        document.getElementById("designation").value = p.designation || "";
-        document.getElementById("website").value = p.website || "";
-        document.getElementById("phone").value = p.phone || "";
-        document.getElementById("address").value = p.address || "";
-        document.getElementById("language").value = p.language || "";
-        document.getElementById("bio").value = p.bio || "";
+            // Anchors updates
+            updateSocialAnchor("githubLink", p.social?.github);
+            updateSocialAnchor("twitterLink", p.social?.twitter);
+            updateSocialAnchor("linkedinLink", p.social?.linkedin);
+            updateSocialAnchor("websiteLink", p.website);
 
-        document.getElementById("twitter").value =
-            p.social?.twitter || "";
-
-        document.getElementById("facebook").value =
-            p.social?.facebook || "";
-
-        document.getElementById("google").value =
-            p.social?.google || "";
-
-        document.getElementById("linkedin").value =
-            p.social?.linkedin || "";
-
-        document.getElementById("github").value =
-            p.social?.github || "";
-
-        document.getElementById("profileName").innerText =
-            `${p.firstName || ""} ${p.lastName || ""}`;
-
-        document.getElementById("profileDesignation").innerText =
-            p.designation || "";
-
-        document.getElementById("profileBio").innerText =
-            p.bio || "";
-
-        if (p.profileImage) {
-            document.getElementById("profilePreview").src =
-                `http://localhost:3000${p.profileImage}`;
+        } catch (err) {
+            console.error("Error loading profile:", err);
         }
-
-        if (p.social?.github) {
-            githubLink.href = p.social.github;
-            githubLink.innerText = p.social.github;
-        }
-
-        if (p.social?.twitter) {
-            twitterLink.href = p.social.twitter;
-            twitterLink.innerText = p.social.twitter;
-        }
-
-        if (p.social?.linkedin) {
-            linkedinLink.href = p.social.linkedin;
-            linkedinLink.innerText = p.social.linkedin;
-        }
-
-        if (p.website) {
-            websiteLink.href = p.website;
-            websiteLink.innerText = p.website;
-        }
-
-    } catch (err) {
-        console.log(err);
-    }
-}
-
-document.getElementById("updateProfileBtn")
-.addEventListener("click", async () => {
-
-    const formData = new FormData();
-
-    formData.append("username", username.value);
-    formData.append("firstName", firstName.value);
-    formData.append("lastName", lastName.value);
-    formData.append("nickName", nickName.value);
-    formData.append("designation", designation.value);
-    formData.append("email", email.value);
-    formData.append("website", website.value);
-    formData.append("phone", phone.value);
-    formData.append("address", address.value);
-    formData.append("language", language.value);
-    formData.append("bio", bio.value);
-
-    formData.append("twitter", twitter.value);
-    formData.append("facebook", facebook.value);
-    formData.append("google", google.value);
-    formData.append("linkedin", linkedin.value);
-    formData.append("github", github.value);
-
-    const image =
-        document.getElementById("profileImage").files[0];
-
-    if (image) {
-        formData.append("profileImage", image);
     }
 
-    const response = await fetch(
-        "http://localhost:3000/api/profile/save",
-        {
-            method: "POST",
-            body: formData
+    // Helper to fix links format
+    function updateSocialAnchor(id, value) {
+        const el = document.getElementById(id);
+        if (el && value) {
+            el.href = value.startsWith('http') ? value : 'https://' + value;
         }
-    );
-
-    const result = await response.json();
-
-    alert(result.message);
-
-    if (result.success) {
-        await loadProfile();
     }
-});
 
-document.getElementById("profileImage")
-.addEventListener("change", function () {
+    // --- FUNCTION 2: DATA SAVE KARNA AUR SUBMIT KE BAAD RE-LOAD KARNA ---
+    document.getElementById("updateProfileBtn").addEventListener("click", async () => {
+        const emailField = document.getElementById("email");
+        if (!emailField || !emailField.value.trim()) {
+            alert("Please fill out the Email field first!");
+            return;
+        }
 
-    const file = this.files[0];
+        const formData = new FormData();
+        
+        // Form Text fields mapping
+        const inputFields = ["username", "firstName", "lastName", "nickName", "designation", "email", "website", "phone", "address", "language", "bio", "twitter", "facebook", "google", "linkedin", "github"];
+        
+        inputFields.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                formData.append(id, element.value.trim());
+            }
+        });
 
-    if (!file) return;
+        // Image file field attachment
+        const imageFileInput = document.getElementById("profileImage");
+        if (imageFileInput && imageFileInput.files[0]) {
+            formData.append("profileImage", imageFileInput.files[0]);
+        }
 
-    const reader = new FileReader();
+        try {
+            const response = await fetch(BASE_URL + "/api/profile/save", {
+                method: "POST",
+                body: formData
+            });
 
-    reader.onload = function (e) {
-        document.getElementById("profilePreview").src =
-            e.target.result;
+            const result = await response.json();
+            alert(result.message);
+
+            if (result.success) {
+                // SAVE HOTE HI TURANT SHOW KARNE KE LIYE FUNCTION RE-CALL
+                await loadProfile(); 
+            }
+        } catch (err) {
+            console.error("Error saving profile:", err);
+            alert("Failed to save profile data.");
+        }
+    });
+
+    // --- FUNCTION 3: LIVE PREVIEW & ON-TYPING TRIGGER ---
+    // Jab user input se baahar aaye ya type karke 1 second ruke, automatic view fetch ho jaye
+    let typingDebounce;
+    document.getElementById("email").addEventListener("keyup", () => {
+        clearTimeout(typingDebounce);
+        typingDebounce = setTimeout(loadProfile, 1000);
+    });
+
+    // Camera Icon ya direct input select image preview handler
+    document.getElementById("profileImage").addEventListener("change", function() {
+        if (this.files && this.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById("profilePreview").src = e.target.result;
+            }
+            reader.readAsDataURL(this.files[0]);
+        }
+    });
+
+    // Initial page check
+    window.onload = function() {
+        if (document.getElementById("email").value) {
+            loadProfile();
+        }
     };
-
-    reader.readAsDataURL(file);
-});
-
-window.onload = function () {
-
-    const emailField =
-        document.getElementById("email");
-
-    if (emailField.value) {
-        loadProfile();
-    }
-};
-
 </script>
 
 </body>
